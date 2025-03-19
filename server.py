@@ -1,3 +1,4 @@
+from datetime import datetime
 import socket
 import threading
 import random
@@ -12,6 +13,27 @@ PANDA_FACTS = [
     "There are only about 1,800 giant pandas left in the wild."
 ]
 
+PANDA_ASCII = {
+    "welcome": r"""
+   (\_/)  
+  (•.•)  
+  / >🎍 Welcome to Panda Chat!
+    """,
+    "@hug": r"""
+  c(_)🥰 Hugs for everyone!
+    (\ 
+     \ ) 
+    """,
+    "@love": r"""
+   ♥‿♥  
+  /🎋\  Love from the pandas!
+    """,
+    "@sad": r"""
+  (>_<)  
+  /🎍\  Bamboo shortage sadness
+    """
+}
+
 class PandaServer:
     def __init__(self, host='localhost', port=5555):
         self.host = host
@@ -19,6 +41,19 @@ class PandaServer:
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.clients = {}  # Format: {client_socket: panda_name}
         self.lock = threading.Lock()
+        self.setup_logging()
+        
+    def setup_logging(self):
+        self.log_file = open("panda_server.log", "a")
+        self.write_log("Server initialized")
+
+    def write_log(self, message):
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_entry = f"[{timestamp}] {message}\n"
+        with self.lock:
+            self.log_file.write(log_entry)
+            self.log_file.flush()
+
 
     def start(self):
         self.server.bind((self.host, self.port))
@@ -51,13 +86,18 @@ class PandaServer:
         try:
             client.send("Enter your panda name: ".encode('utf-8'))
             name = client.recv(1024).decode('utf-8').strip()
+            client.send(PANDA_ASCII["welcome"].encode('utf-8'))
             with self.lock:
                 self.clients[client] = name
             self.broadcast(f"{name} has joined the grove! 🌿", sender=client)
+            self.write_log(f"User joined: {name}")  # Existing log
+            
             while True:
                 message = client.recv(1024).decode('utf-8').strip()
                 if not message:
                     break
+                 # Log the raw message before processing
+                self.write_log(f"Message from {name}: {message}")
                 if message == "@leaves":
                     self.remove_client(client)
                     break
@@ -67,10 +107,18 @@ class PandaServer:
                 elif message == "@bamboo":
                     fact = random.choice(PANDA_FACTS)
                     client.send(f"Panda Fact: {fact} 🌱".encode('utf-8'))
+                elif message in PANDA_ASCII:
+                    self.broadcast(f"\n{PANDA_ASCII[message]}\n{name} {message}s!")
+                    continue
                 else:
                     self.broadcast(f"{name}: {message}", sender=client)
-        except:
-            self.remove_client(client)
+        except Exception as e:
+            self.write_log(f"Error with {name}: {str(e)}")
+        finally:
+            self.write_log(f"User left: {name}")
+            
+    def __del__(self):
+        self.log_file.close()
 
 if __name__ == "__main__":
     server = PandaServer()

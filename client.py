@@ -4,7 +4,7 @@ import threading
 def receive_messages(client):
     while True:
         try:
-            message = client.recv(1024).decode('utf-8')
+            message = client.recv(4096).decode('utf-8')  # Increased buffer for ASCII
             print(message)
         except:
             print("Disconnected from the server.")
