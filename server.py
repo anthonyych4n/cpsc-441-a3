@@ -35,7 +35,7 @@ PANDA_ASCII = {
 }
 
 class PandaServer:
-    def __init__(self, host='localhost', port=5555):
+    def __init__(self, host='localhost', port=3000):
         self.host = host
         self.port = port
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
